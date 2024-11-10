@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody), typeof(MeshCollider))]
 public class PlayerController : MonoBehaviour
@@ -21,6 +22,8 @@ public class PlayerController : MonoBehaviour
     public int maxPileSize;
     [SerializeField] private float moveSpeed;
     [SerializeField] private float punchRange = 1.5f;
+
+    [SerializeField] Button punchButton;
 
     private int upgradeCount = -1;
 
@@ -66,7 +69,10 @@ public class PlayerController : MonoBehaviour
     {
         for (int i = 0; i < corpses.Count; i++)
         {
-            corpses[i].transform.DOLocalMoveZ(targetPile.transform.localPosition.z - i * 0.3f, 1f);
+            GameObject corpse = corpses[i];
+            Vector3 targetPosition = new Vector3(0, i * 0.5f, targetPile.transform.localPosition.z - i);
+            corpse.transform.localPosition = Vector3.Lerp(corpse.transform.localPosition, targetPosition, Time.deltaTime);
+            //corpses[i].transform.DOLocalMoveZ(targetPile.transform.localPosition.z - i * 0.3f, 1f);
         }
     }
 
@@ -75,7 +81,10 @@ public class PlayerController : MonoBehaviour
     {
         for (int i = 0; i < corpses.Count; i++)
         {
-            corpses[i].transform.DOLocalMoveZ(0, 1f);
+            GameObject corpse = corpses[i];
+            Vector3 targetPosition = new Vector3(0, i * 0.5f, 0);
+            corpse.transform.localPosition = Vector3.Lerp(corpse.transform.localPosition, targetPosition, Time.deltaTime);
+            //corpses[i].transform.DOLocalMoveZ(0, 1f);
         }
     }
 
@@ -83,6 +92,12 @@ public class PlayerController : MonoBehaviour
     public void Punch()
     {
         animator.SetTrigger("Punching");
+        Invoke("MakePunchButtonInteractable", 1.5f);
+    }
+
+    private void MakePunchButtonInteractable()
+    {
+        punchButton.interactable = true;
     }
 
     //Controls the player rotation, not letting it fall facing the ground
@@ -143,7 +158,7 @@ public class PlayerController : MonoBehaviour
                 {
                     corpseCount++;
                     corpses.Add(enemy.gameObject);
-                    Invoke("StackCorpses", 2f);
+                    Invoke("StackCorpses", 1.5f);
                 }
                 else
                 {
@@ -158,13 +173,13 @@ public class PlayerController : MonoBehaviour
     {
         Transform corpseTransform = corpses[corpseCount].transform;
         Animator corpseAnimator = corpses[corpseCount].GetComponent<Animator>();
-        corpses[corpseCount].transform.DOScale(0, 0.1f).OnComplete(() =>
+        corpses[corpseCount].transform.DOScale(0, 0f).OnComplete(() =>
         {
             corpseAnimator.enabled = true;
             corpseAnimator.SetBool("isCorpse", true);
             corpseTransform.parent = pileTransform;
             corpseTransform.position = pileTransform.position + new Vector3(0, collectionHeightOffset + corpseCount * 0.5f, 0);
-            corpseTransform.DOScale(1, 1f);
+            corpseTransform.DOScale(1, 0.5f);
             Quaternion planeRotation = pileTransform.rotation;
             Quaternion laidDownRotation = planeRotation * Quaternion.Euler(90, 0, 90);
             corpseTransform.rotation = laidDownRotation;
@@ -177,7 +192,7 @@ public class PlayerController : MonoBehaviour
     {
         Sequence sequence = DOTween.Sequence();
 
-        float scaleDuration = 0.5f;
+        float scaleDuration = 0.2f;
         if(corpses.Count > 0)
         {
             for (int i = corpses.Count - 1; i >= 0; i--)
@@ -186,7 +201,8 @@ public class PlayerController : MonoBehaviour
                 sequence.Append(corpse.transform.DOScale(0, scaleDuration));
                 sequence.AppendCallback(() =>
                 {
-                    coinTransform.DOPunchScale(new Vector3(1, 1, 1), 0.5f, 1);
+                    Destroy(corpse);
+                    coinTransform.DOPunchScale(new Vector3(1, 1, 1), scaleDuration, 1);
                     coinAmount++;
                     uiManager.coinAmountText.text = coinAmount.ToString();
                 });
